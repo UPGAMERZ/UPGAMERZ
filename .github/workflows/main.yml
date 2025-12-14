@@ -12,8 +12,8 @@ jobs:
     - name: Enable RDP
       shell: powershell
       run: |
-        net user runneradmin P@ssw0rd123 /add
-        net localgroup administrators runneradmin /add
+        net user runneradmin P@ssw0rd123 /add 2>$null
+        net localgroup administrators runneradmin /add 2>$null
         Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
