@@ -1,39 +1,35 @@
-- name: Enable RDP
-  shell: powershell
-  run: |
-    $username = "runneradmin"
-    $password = "Password@123"
+name: Windows RDP via Tailscale
 
-    # Check if user exists
-    if (-Not (Get-LocalUser -Name $username -ErrorAction SilentlyContinue)) {
-        net user $username $password /add
-        Write-Host "User created."
-    } else {
-        Write-Host "User already exists."
-    }
+on:
+  workflow_dispatch:
 
-    # Add to Administrators group if not already
-    if (-Not ((Get-LocalGroupMember Administrators -Name $username -ErrorAction SilentlyContinue))) {
-        net localgroup administrators $username /add
-        Write-Host "User added to Administrators group."
-    } else {
-        Write-Host "User already in Administrators group."
-    }
+jobs:
+  rdp:
+    runs-on: windows-latest
+    timeout-minutes: 360
 
-    # Enable RDP
-    Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+    steps:
+    - name: Enable RDP
+      run: |
+        net user runneradmin P@ssw0rd123 /add
+        net localgroup administrators runneradmin /add
+        reg add "HKLM\System\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-    # Enable firewall for RDP
-    Enable-NetFirewallRule -DisplayGroup "Remote Desktop"        $authKey = "$env:TS_AUTHKEY"
-        & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=$authKey --hostname=github-rdp
+    - name: Install Tailscale
+      run: |
+        curl -fsSL https://tailscale.com/install.ps1 | powershell -
+
+    - name: Connect to Tailscale
+      run: |
+        "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TS_AUTHKEY }} --hostname=github-rdp
 
     - name: Show Tailscale IP
-      shell: powershell
       run: |
-        & "C:\Program Files\Tailscale\tailscale.exe" ip -4
+        "C:\Program Files\Tailscale\tailscale.exe" ip -4
 
-    - name: Keep Alive
-      shell: powershell
+    - name: Keep Runner Alive
       run: |
+        while ($true) { Start-Sleep -Seconds 60 }      run: |
         Write-Host "RDP is ready for 12 hours..."
         Start-Sleep -Seconds 43200  # 12 hours
