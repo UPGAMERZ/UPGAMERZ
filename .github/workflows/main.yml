@@ -1,0 +1,39 @@
+- name: Enable RDP
+  shell: powershell
+  run: |
+    $username = "runneradmin"
+    $password = "Password@123"
+
+    # Check if user exists
+    if (-Not (Get-LocalUser -Name $username -ErrorAction SilentlyContinue)) {
+        net user $username $password /add
+        Write-Host "User created."
+    } else {
+        Write-Host "User already exists."
+    }
+
+    # Add to Administrators group if not already
+    if (-Not ((Get-LocalGroupMember Administrators -Name $username -ErrorAction SilentlyContinue))) {
+        net localgroup administrators $username /add
+        Write-Host "User added to Administrators group."
+    } else {
+        Write-Host "User already in Administrators group."
+    }
+
+    # Enable RDP
+    Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+
+    # Enable firewall for RDP
+    Enable-NetFirewallRule -DisplayGroup "Remote Desktop"        $authKey = "$env:TS_AUTHKEY"
+        & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=$authKey --hostname=github-rdp
+
+    - name: Show Tailscale IP
+      shell: powershell
+      run: |
+        & "C:\Program Files\Tailscale\tailscale.exe" ip -4
+
+    - name: Keep Alive
+      shell: powershell
+      run: |
+        Write-Host "RDP is ready for 12 hours..."
+        Start-Sleep -Seconds 43200  # 12 hours
